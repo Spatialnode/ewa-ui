@@ -2,7 +2,7 @@
   <img src="https://img.shields.io/badge/Ewa%20UI-React%20Component%20Library-blue?style=for-the-badge&logo=react&logoColor=white" alt="Ewa UI"/>
 </p>
 
-<h1 align="center">🎨 Ewa UI</h1>
+<h1 align="center">🎨 Ewà UI</h1>
 
 <p align="center">
   <strong>Spatialnode's shared React component library</strong>
