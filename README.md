@@ -135,14 +135,13 @@ This runs `tsdown`, which bundles `src/index.ts` into ESM and CJS output with ty
 
 ## Publishing
 
-Ewa UI is published to npm under the `@spatialnode` organization as [`@spatialnode/ewa-ui`](https://www.npmjs.com/package/@spatialnode/ewa-ui).
+Ewa UI is published to npm under the `@spatialnode` organization as [`@spatialnode/ewa-ui`](https://www.npmjs.com/package/@spatialnode/ewa-ui). Releases are triggered from GitHub, not published manually from a local machine.
 
-```bash
-pnpm build
-npm publish --access public
-```
+1. Bump `version` in `package.json` (merge that change to `main` first, following the normal PR workflow).
+2. On GitHub, [create a new Release](https://github.com/Spatialnode/ewa-ui/releases/new) with tag `vX.Y.Z` matching the `package.json` version (e.g. `v0.1.0`), targeting `main`.
+3. Publishing the release triggers `.github/workflows/release.yml`, which runs typecheck, tests, and `pnpm build`, verifies the tag matches `package.json`, then runs `npm publish --access public --provenance`.
 
-Ensure you're logged in to npm (`npm login`) with an account that belongs to the `spatialnode` org before publishing.
+This requires an `NPM_TOKEN` repo secret (an npm **automation** token for an account in the `spatialnode` org — automation tokens bypass 2FA for CI) configured under repo Settings → Secrets and variables → Actions.
 
 ## Contributing
 

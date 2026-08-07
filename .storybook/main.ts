@@ -21,6 +21,7 @@ const config: StorybookConfig = {
   ],
   "framework": "@storybook/react-vite",
   async viteFinal(viteConfig) {
+    viteConfig.base = "./";
     viteConfig.plugins ??= [];
     viteConfig.plugins.push(tailwindcss());
     viteConfig.resolve ??= {};
