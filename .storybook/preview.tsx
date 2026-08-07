@@ -4,6 +4,7 @@ import { withThemeByClassName } from '@storybook/addon-themes'
 import './theme.css'
 
 const preview: Preview = {
+  tags: ['autodocs'],
   parameters: {
     controls: {
       matchers: {
