@@ -18,10 +18,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: https://registry.npmjs.org
 
       - run: pnpm install --frozen-lockfile
+
+      - run: pnpm exec playwright install --with-deps chromium
 
       - run: pnpm typecheck
 
