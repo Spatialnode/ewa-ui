@@ -33,14 +33,22 @@
   "keywords": [
     "component-library",
     "ewa-ui",
-    "spatialnode-ui",
+    "Spatialnode-ui",
     "design-system"
   ],
   "author": "Spatialnode",
   "license": "ISC",
   "packageManager": "pnpm@10.27.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": false
+    },
+    "react-dom": {
+      "optional": false
+    }
   },
   "peerDependencies": {
     "react": "^19.2.8",
