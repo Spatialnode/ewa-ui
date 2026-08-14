@@ -3,3 +3,4 @@ dist
 storybook-static
 *.log
 .DS_Store
+src/components/ui/maplibre-gl-worker.mjs

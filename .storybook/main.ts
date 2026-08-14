@@ -29,6 +29,13 @@ const config: StorybookConfig = {
       ...viteConfig.resolve.alias,
       "@": path.resolve(dirname, "../src"),
     };
+    // maplibre-gl builds its worker URL dynamically, which breaks under Vite's
+    // dependency pre-bundling. Exclude it from optimization.
+    viteConfig.optimizeDeps ??= {};
+    viteConfig.optimizeDeps.exclude = [
+      ...(viteConfig.optimizeDeps.exclude ?? []),
+      "maplibre-gl",
+    ];
     return viteConfig;
   },
 };
