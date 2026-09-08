@@ -516,7 +516,7 @@ export const TMSRasterSample: Story = {
       <Map viewport={{ center: [6.7343, 0.3341], zoom: 15 }}>
         <MapRasterLayer
           tiles={[
-            "https://titiler.hotosm.org/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x?url=https://oin-hotosm-temp.s3.us-east-1.amazonaws.com/593ee39ce407d7001138613f/0/fc5e8395-5ef8-46b7-8f49-f710bd95866f.tif",
+            "https://titiler.hotosm.org/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x.png?url=https://oin-hotosm-temp.s3.us-east-1.amazonaws.com/593ee39ce407d7001138613f/0/fc5e8395-5ef8-46b7-8f49-f710bd95866f.tif&nodata=0",
           ]}
           tileSize={256}
         />
