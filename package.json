@@ -20,7 +20,8 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist"
@@ -28,8 +29,9 @@
   "sideEffects": false,
   "scripts": {
     "postinstall": "node scripts/copy-maplibre-worker.mjs",
+    "prebuild": "rm -rf dist && node scripts/build-css.mjs",
     "build": "tsdown",
-    "postbuild": "node scripts/copy-maplibre-worker.mjs dist",
+    "postbuild": "node scripts/copy-maplibre-worker.mjs dist && node scripts/inject-css-import.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -76,6 +78,7 @@
     "@storybook/addon-themes": "^10.5.7",
     "@storybook/addon-vitest": "^10.5.7",
     "@storybook/react-vite": "^10.5.7",
+    "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/d3-scale": "4.0.9",
     "@types/geojson": "7946.0.16",
