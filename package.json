@@ -1,6 +1,6 @@
 {
   "name": "@spatialnode/ewa-ui",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Spatialnode React component library",
   "repository": {
     "type": "git",
@@ -28,7 +28,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "postinstall": "node scripts/copy-maplibre-worker.mjs",
+    "prepare": "node scripts/copy-maplibre-worker.mjs",
     "prebuild": "rm -rf dist && node scripts/build-css.mjs",
     "build": "tsdown",
     "postbuild": "node scripts/copy-maplibre-worker.mjs dist && node scripts/inject-css-import.mjs",
