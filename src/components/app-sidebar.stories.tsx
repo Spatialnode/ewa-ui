@@ -11,8 +11,8 @@ const meta = {
     layout: "fullscreen",
   },
   args: {
-    user: { name: "Sundry Food", role: "Super Admin" },
-    logo: <span className="text-sm font-semibold">Sundry</span>,
+    user: { name: "Jane Doe", role: "Super Admin" },
+    logo: "Logo",
   },
   render: function Render(args) {
     const [activeId, setActiveId] = React.useState(args.activeId);
@@ -22,7 +22,10 @@ const meta = {
   },
   decorators: [
     (Story, { parameters }) => (
-      <SidebarProvider defaultOpen={parameters.defaultOpen ?? true}>
+      <SidebarProvider
+        defaultOpen={parameters.defaultOpen ?? true}
+        width={parameters.width}
+      >
         <Story />
         <SidebarInset />
       </SidebarProvider>
@@ -38,4 +41,8 @@ export const Expanded: Story = {};
 
 export const Collapsed: Story = {
   parameters: { defaultOpen: false },
+};
+
+export const CustomWidth: Story = {
+  parameters: { width: "16rem" },
 };

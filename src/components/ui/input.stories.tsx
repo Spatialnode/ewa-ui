@@ -1,5 +1,6 @@
 // src/components/ui/input.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { PiEnvelopeSimpleFill, PiFunnelSimpleFill } from "react-icons/pi";
 import { Input } from "./input";
 import { Label } from "./label";
 
@@ -42,7 +43,7 @@ const meta = {
     ),
   ],
   argTypes: {
-    type: { control: "inline-radio", options: ["text", "email", "password"] },
+    type: { control: "inline-radio", options: ["text", "email", "password", "search"] },
     disabled: { control: "boolean" },
     "aria-invalid": { control: "boolean" },
   },
@@ -99,6 +100,38 @@ export const PasswordError: Story = {
     defaultValue: "supersecretpass",
     "aria-invalid": true,
   },
+};
+
+export const Search: Story = {
+  args: { type: "search", placeholder: undefined },
+};
+
+export const SearchFilled: Story = {
+  name: "Filled: Search",
+  args: { type: "search", placeholder: undefined, defaultValue: "Lekki Phase 1" },
+};
+
+export const SearchDisabled: Story = {
+  name: "Disabled: Search",
+  args: { type: "search", placeholder: undefined, disabled: true },
+};
+
+export const SearchCustomIcon: Story = {
+  name: "Search: Custom Icon",
+  args: {
+    type: "search",
+    placeholder: "Filter stores",
+    leftIcon: <PiFunnelSimpleFill />,
+  },
+};
+
+export const SearchWithoutIcon: Story = {
+  name: "Search: Without Icon",
+  args: { type: "search", placeholder: undefined, leftIcon: null },
+};
+
+export const WithLeftIcon: Story = {
+  args: { leftIcon: <PiEnvelopeSimpleFill /> },
 };
 
 function StateField({ field, state }: { field: Field; state: State }) {

@@ -5,8 +5,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { PiSidebarSimpleFill } from "react-icons/pi";
-
+import { PiSquareHalfFill } from "react-icons/pi";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+const SIDEBAR_WIDTH = "11.625rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "2.625rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
@@ -57,6 +56,8 @@ function SidebarProvider({
   defaultOpen = true,
   open: openProp,
   onOpenChange: setOpenProp,
+  width = SIDEBAR_WIDTH,
+  iconWidth = SIDEBAR_WIDTH_ICON,
   className,
   style,
   children,
@@ -65,6 +66,10 @@ function SidebarProvider({
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Expanded sidebar width as any CSS length, e.g. "11.625rem" or "200px". */
+  width?: string;
+  /** Collapsed (collapsible="icon") sidebar width as any CSS length. */
+  iconWidth?: string;
 }) {
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
@@ -132,8 +137,8 @@ function SidebarProvider({
         data-slot="sidebar-wrapper"
         style={
           {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+            "--sidebar-width": width,
+            "--sidebar-width-icon": iconWidth,
             ...style,
           } as React.CSSProperties
         }
@@ -231,7 +236,6 @@ function Sidebar({
         data-side={side}
         className={cn(
           "fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:-left-(--sidebar-width) data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
-          // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
@@ -271,7 +275,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      <PiSidebarSimpleFill className="cn-rtl-flip" />
+      <PiSquareHalfFill className="cn-rtl-flip" />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
@@ -359,7 +363,7 @@ function SidebarSeparator({
     <Separator
       data-slot="sidebar-separator"
       data-sidebar="separator"
-      className={cn("mx-2 w-auto h-px bg-border-01", className)}
+      className={cn("w-auto h-px bg-border-01", className)}
       {...props}
     />
   );
@@ -480,8 +484,8 @@ const sidebarMenuButtonVariants = cva(
     variants: {
       variant: {
         default:
-          "hover:bg-surface-level-01 hover:text-display-02 text-display-subtle-02",
-        secondary : "bg-surface-base text-display-02",
+          "hover:bg-surface-level-01 hover:text-display-02 text-display-subtle-02 font-medium",
+        secondary: "bg-surface-base text-display-subtle-02",
         outline:
           "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
       },
