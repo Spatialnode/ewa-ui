@@ -27,44 +27,80 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ReactNode,
   type Ref,
 } from "react";
-import {
-  X,
-  Minus,
-  Plus,
-  Locate,
-  Maximize,
-  Loader2,
-  ChevronUp,
-  ChevronDown,
-} from "lucide-react";
+import { Popover } from "radix-ui";
+import { X, Maximize, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 
+import {
+  PiCrosshairLight,
+  PiMinus,
+  PiPlus,
+  PiRuler,
+  PiMapTrifold,
+} from "react-icons/pi";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Registers the `cog://` protocol so `MapRasterLayer` / `MapHillshade` /
-// `MapTerrain` can read Cloud Optimized GeoTIFFs directly from cloud storage
-// (HTTP range requests, decoded in the browser) instead of a pre-tiled
-// XYZ/TileJSON endpoint — see `cogUrl`. Registering twice is harmless;
-// `addProtocol` just replaces the handler for the same name.
 addProtocol("cog", cogProtocol);
 
 // Points maplibre-gl at its worker script, vendored next to this file by
 // `scripts/copy-maplibre-worker.mjs` — see that file for why.
 setWorkerUrl(new URL("./maplibre-gl-worker.mjs", import.meta.url).href);
 
-const defaultStyles = {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+// Esri World Imagery raster tiles
+const satelliteStyle: MapLibreGL.StyleSpecification = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: "raster",
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      ],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution:
+        "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    },
+  },
+  layers: [{ id: "satellite", type: "raster", source: "satellite" }],
 };
 
-// A tile-less, dependency-free style with a transparent background. Use it for
-// data visualizations (choropleths, world arcs, dot maps) where you draw your
-// own layers and don't need a street basemap. The easiest way to opt in is the
-// `blank` prop:
-//   <Map blank>...</Map>
-// The transparent background lets the themed container show through.
+/**
+ * Ready-made basemap presets. Pass one's `style` to `<Map styles>`, or a list
+ * of them to `<MapControls basemaps>` for the basemap switcher.
+ * Thumbnails are a single z12 tile over Lagos from each provider.
+ */
+const basemaps = {
+  street: {
+    id: "street",
+    label: "Street",
+    thumbnail: "https://a.basemaps.cartocdn.com/light_all/12/2086/1973.png",
+    style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  },
+  dark: {
+    id: "dark",
+    label: "Dark",
+    thumbnail: "https://a.basemaps.cartocdn.com/dark_all/12/2086/1973.png",
+    style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  },
+  satellite: {
+    id: "satellite",
+    label: "Satellite",
+    thumbnail:
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1973/2086",
+    style: satelliteStyle,
+  },
+} satisfies Record<string, MapBasemap & { style: MapStyleOption }>;
+
+const defaultStyles = {
+  dark: basemaps.dark.style,
+  light: basemaps.street.style,
+};
+
 const blankMapStyle: MapLibreGL.StyleSpecification = {
   version: 8,
   sources: {},
@@ -347,7 +383,15 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
   }, []);
 
   const handleMove = useCallback(
-    (e: { viewState: { longitude: number; latitude: number; zoom: number; bearing: number; pitch: number } }) => {
+    (e: {
+      viewState: {
+        longitude: number;
+        latitude: number;
+        zoom: number;
+        bearing: number;
+        pitch: number;
+      };
+    }) => {
       onViewportChangeRef.current?.({
         center: [e.viewState.longitude, e.viewState.latitude],
         zoom: e.viewState.zoom,
@@ -554,14 +598,16 @@ function DefaultMarkerIcon() {
 
 function PopupCloseButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon-xs"
       type="button"
       onClick={onClick}
       aria-label="Close popup"
-      className="focus-visible:ring-ring hover:bg-muted text-foreground absolute top-1 right-1 z-10 inline-flex size-5 cursor-pointer items-center justify-center rounded-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+      className="text-foreground absolute top-1 right-1 z-10 size-5 cursor-pointer rounded-sm focus-visible:ring-2 focus-visible:ring-inset"
     >
       <X className="size-3.5" />
-    </button>
+    </Button>
   );
 }
 
@@ -683,113 +729,149 @@ function MarkerLabel({
   );
 }
 
-type MapControlsProps = {
-  /** Position of the controls on the map (default: "bottom-right") */
-  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
-  /** Show zoom in/out buttons (default: true) */
-  showZoom?: boolean;
-  /** Show compass button to reset bearing (default: false) */
-  showCompass?: boolean;
-  /** Show tilt up/down buttons to control map pitch (default: false) */
-  showPitch?: boolean;
-  /** Degrees to change pitch by per tilt button click (default: 15) */
+type MapControlsPosition =
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right";
+
+type MapControlsOrientation = "horizontal" | "vertical";
+
+const MapControlGroupContext = createContext<{
+  orientation: MapControlsOrientation;
+} | null>(null);
+
+type MapControlGroupProps = ComponentProps<"div"> & {
+  /** Lay the group's buttons out in a row or a column (default: "vertical") */
+  orientation?: MapControlsOrientation;
+};
+
+/**
+ * A single tile of joined map buttons (e.g. zoom in / zoom out). Buttons
+ * inside share one tile and are separated by a divider. Use it with
+ * `MapControlButton` to build your own controls.
+ */
+function MapControlGroup({
+  orientation = "vertical",
+  className,
+  ...props
+}: MapControlGroupProps) {
+  const contextValue = useMemo(() => ({ orientation }), [orientation]);
+
+  return (
+    <MapControlGroupContext.Provider value={contextValue}>
+      <div
+        role="group"
+        data-slot="map-control-group"
+        data-orientation={orientation}
+        className={cn(
+          "bg-surface-base divide-border-00 flex w-fit overflow-hidden rounded-8 shadow-sm",
+          orientation === "vertical"
+            ? "flex-col divide-y"
+            : "flex-row divide-x",
+          className,
+        )}
+        {...props}
+      />
+    </MapControlGroupContext.Provider>
+  );
+}
+
+type MapControlButtonProps = Omit<
+  ComponentProps<typeof Button>,
+  "aria-label"
+> & {
+  /** Accessible name, also shown as the native tooltip */
+  label: string;
+  /** Marks a toggle control as on (sets `aria-pressed`) */
+  active?: boolean;
+};
+
+/**
+ * An icon button styled for the map (Button's `map-icon` variant). Inside a
+ * `MapControlGroup` it drops its own border and shadow so the group reads as
+ * one tile; on its own it is a standalone rounded tile.
+ */
+function MapControlButton({
+  label,
+  active,
+  className,
+  variant = "map-icon",
+  size = "icon-sm",
+  ...props
+}: MapControlButtonProps) {
+  const group = useContext(MapControlGroupContext);
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={size}
+      aria-label={label}
+      title={label}
+      aria-pressed={active}
+      className={cn(
+        "border-none focus-visible:ring-0 [&_svg:not([class*='size-'])]:size-4",
+        "disabled:bg-surface-base disabled:opacity-50",
+        group ? "rounded-10" : "rounded-10 shadow-sm",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+type UseMapControlsOptions = {
+  /** Zoom levels to change per zoom in/out (default: 1) */
+  zoomStep?: number;
+  /** Degrees to change pitch by per tilt (default: 15) */
   pitchStep?: number;
-  /** Show locate button to find user's location (default: false) */
-  showLocate?: boolean;
-  /** Show fullscreen toggle button (default: false) */
-  showFullscreen?: boolean;
-  /** Additional CSS classes for the controls container */
-  className?: string;
   /** Callback with user coordinates when located */
   onLocate?: (coords: { longitude: number; latitude: number }) => void;
 };
 
-const positionClasses = {
-  "top-left": "top-2 left-2",
-  "top-right": "top-2 right-2",
-  "bottom-left": "bottom-2 left-2",
-  "bottom-right": "bottom-10 right-2",
-};
-
-function ControlGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="border-border bg-background [&>button:not(:last-child)]:border-border flex flex-col overflow-hidden rounded-md border shadow-sm [&>button:not(:last-child)]:border-b">
-      {children}
-    </div>
-  );
-}
-
-function ControlButton({
-  onClick,
-  label,
-  children,
-  disabled = false,
-}: {
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      type="button"
-      className={cn(
-        "flex size-8 items-center justify-center transition-colors",
-        "first:rounded-t-md last:rounded-b-md",
-        "hover:bg-accent dark:hover:bg-accent/40",
-        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
-        "disabled:pointer-events-none disabled:opacity-50",
-      )}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-}
-
-function MapControls({
-  position = "bottom-right",
-  showZoom = true,
-  showCompass = false,
-  showPitch = false,
+/**
+ * The actions behind the built-in map controls, for wiring your own buttons
+ * (or any other UI) to the map. Must be used inside `<Map>`.
+ */
+function useMapControls({
+  zoomStep = 1,
   pitchStep = 15,
-  showLocate = false,
-  showFullscreen = false,
-  className,
   onLocate,
-}: MapControlsProps) {
+}: UseMapControlsOptions = {}) {
   const { map } = useMap();
-  const [waitingForLocation, setWaitingForLocation] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
-  const handleZoomIn = useCallback(() => {
-    map?.zoomTo(map.getZoom() + 1, { duration: 300 });
-  }, [map]);
+  const onLocateRef = useRef(onLocate);
+  onLocateRef.current = onLocate;
 
-  const handleZoomOut = useCallback(() => {
-    map?.zoomTo(map.getZoom() - 1, { duration: 300 });
-  }, [map]);
+  const zoomIn = useCallback(() => {
+    map?.zoomTo(map.getZoom() + zoomStep, { duration: 300 });
+  }, [map, zoomStep]);
 
-  const handleResetBearing = useCallback(() => {
+  const zoomOut = useCallback(() => {
+    map?.zoomTo(map.getZoom() - zoomStep, { duration: 300 });
+  }, [map, zoomStep]);
+
+  const resetBearing = useCallback(() => {
     map?.resetNorthPitch({ duration: 300 });
   }, [map]);
 
-  const handlePitchUp = useCallback(() => {
+  const pitchUp = useCallback(() => {
     if (!map) return;
     const pitch = Math.min(map.getPitch() + pitchStep, map.getMaxPitch());
     map.easeTo({ pitch, duration: 300 });
   }, [map, pitchStep]);
 
-  const handlePitchDown = useCallback(() => {
+  const pitchDown = useCallback(() => {
     if (!map) return;
     const pitch = Math.max(map.getPitch() - pitchStep, map.getMinPitch());
     map.easeTo({ pitch, duration: 300 });
   }, [map, pitchStep]);
 
-  const handleLocate = useCallback(() => {
+  const locate = useCallback(() => {
     if (!("geolocation" in navigator)) return;
-    setWaitingForLocation(true);
+    setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = {
@@ -801,20 +883,20 @@ function MapControls({
           zoom: 14,
           duration: 1500,
         });
-        onLocate?.(coords);
-        setWaitingForLocation(false);
+        onLocateRef.current?.(coords);
+        setIsLocating(false);
       },
       (error) => {
         console.error("Error getting location:", error);
-        setWaitingForLocation(false);
+        setIsLocating(false);
       },
       // Without a timeout the spec default is Infinity: a dismissed permission
       // prompt would leave the button disabled forever.
       { timeout: 10000 },
     );
-  }, [map, onLocate]);
+  }, [map]);
 
-  const handleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback(() => {
     const container = map?.getContainer();
     if (!container) return;
     if (document.fullscreenElement) {
@@ -824,66 +906,458 @@ function MapControls({
     }
   }, [map]);
 
+  return {
+    map,
+    zoomIn,
+    zoomOut,
+    resetBearing,
+    pitchUp,
+    pitchDown,
+    locate,
+    isLocating,
+    toggleFullscreen,
+  };
+}
+
+/** A basemap option shown in the basemap switcher. */
+type MapBasemap = {
+  /** Unique id, used for `basemap` / `defaultBasemap` */
+  id: string;
+  /** Label under the thumbnail */
+  label: string;
+  /** Preview image URL */
+  thumbnail?: string;
+  /**
+   * Style applied with `map.setStyle()` when selected. Omit it to handle the
+   * switch yourself in `onBasemapChange` (e.g. by updating `<Map styles>`).
+   */
+  style?: MapStyleOption;
+};
+
+/**
+ * Per-control class names, so each control can be styled independently.
+ * Group keys (`zoom`, `locate`, …) target that control's `MapControlGroup`.
+ */
+type MapControlsClassNames = {
+  /** The positioned container holding every group */
+  root?: string;
+  /** Every group */
+  group?: string;
+  /** Every button */
+  button?: string;
+  zoom?: string;
+  compass?: string;
+  pitch?: string;
+  locate?: string;
+  fullscreen?: string;
+  measure?: string;
+  basemap?: string;
+  /** The basemap switcher's popover panel */
+  basemapPanel?: string;
+  /** Each option inside the basemap panel */
+  basemapOption?: string;
+};
+
+/**
+ * Handlers that replace a built-in control's default behaviour. Each receives
+ * the maplibre-gl map instance.
+ */
+type MapControlsHandlers = {
+  onZoomIn?: (map: MapRef) => void;
+  onZoomOut?: (map: MapRef) => void;
+  onResetBearing?: (map: MapRef) => void;
+  onPitchUp?: (map: MapRef) => void;
+  onPitchDown?: (map: MapRef) => void;
+  onLocateClick?: (map: MapRef) => void;
+  onFullscreenClick?: (map: MapRef) => void;
+};
+
+type MapControlsProps = MapControlsHandlers & {
+  /** Position of the controls on the map (default: "bottom-right") */
+  position?: MapControlsPosition;
+  /** Stack the control groups in a row or a column (default: "vertical") */
+  orientation?: MapControlsOrientation;
+  /** Lay out buttons inside each group (default: same as `orientation`) */
+  groupOrientation?: MapControlsOrientation;
+  /** Show zoom in/out buttons (default: true) */
+  showZoom?: boolean;
+  /** Zoom levels to change per zoom click (default: 1) */
+  zoomStep?: number;
+  /** Show compass button to reset bearing (default: false) */
+  showCompass?: boolean;
+  /** Show tilt up/down buttons to control map pitch (default: false) */
+  showPitch?: boolean;
+  /** Degrees to change pitch by per tilt button click (default: 15) */
+  pitchStep?: number;
+  /** Show locate button to find user's location (default: false) */
+  showLocate?: boolean;
+  /** Show fullscreen toggle button (default: false) */
+  showFullscreen?: boolean;
+  /** Show the measure (ruler) toggle button (default: false) */
+  showMeasure?: boolean;
+  /** Whether measuring is on — renders the measure button as pressed */
+  measureActive?: boolean;
+  /** Called when the measure button is clicked */
+  onMeasureClick?: () => void;
+  /** Options for the basemap switcher; the switcher shows when non-empty */
+  basemaps?: MapBasemap[];
+  /** Selected basemap id (controlled) */
+  basemap?: string;
+  /** Initially selected basemap id (default: the first option) */
+  defaultBasemap?: string;
+  /** Called with the chosen option when the basemap changes */
+  onBasemapChange?: (basemap: MapBasemap) => void;
+  /** Heading of the basemap panel (default: "Basemap") */
+  basemapTitle?: string;
+  /** Additional CSS classes for the controls container */
+  className?: string;
+  /** Per-control class names for independent styling */
+  classNames?: MapControlsClassNames;
+  /** Callback with user coordinates when located */
+  onLocate?: (coords: { longitude: number; latitude: number }) => void;
+  /** Extra controls (e.g. `MapControlGroup`s), rendered before the built-ins */
+  children?: ReactNode;
+};
+
+const positionClasses: Record<MapControlsPosition, string> = {
+  "top-left": "top-4 left-4",
+  "top-right": "top-4 right-4",
+  "bottom-left": "bottom-4 left-4",
+  "bottom-right": "bottom-10 right-4",
+};
+
+function MapControls({
+  position = "bottom-right",
+  orientation = "vertical",
+  groupOrientation,
+  showZoom = true,
+  zoomStep = 1,
+  showCompass = false,
+  showPitch = false,
+  pitchStep = 15,
+  showLocate = false,
+  showFullscreen = false,
+  showMeasure = false,
+  measureActive = false,
+  onMeasureClick,
+  basemaps,
+  basemap,
+  defaultBasemap,
+  onBasemapChange,
+  basemapTitle = "Basemap",
+  className,
+  classNames,
+  onLocate,
+  onZoomIn,
+  onZoomOut,
+  onResetBearing,
+  onPitchUp,
+  onPitchDown,
+  onLocateClick,
+  onFullscreenClick,
+  children,
+}: MapControlsProps) {
+  const controls = useMapControls({ zoomStep, pitchStep, onLocate });
+  const { map } = controls;
+  const innerOrientation = groupOrientation ?? orientation;
+  const isTop = position.startsWith("top");
+  const isLeft = position.endsWith("left");
+
+  // A custom handler replaces the built-in action entirely.
+  const handle =
+    (override: ((map: MapRef) => void) | undefined, fallback: () => void) =>
+    () => {
+      if (override) {
+        if (map) override(map);
+      } else {
+        fallback();
+      }
+    };
+
+  const groupClass = (key: keyof MapControlsClassNames) =>
+    cn(classNames?.group, classNames?.[key]);
+
+  const zoomIn = (
+    <MapControlButton
+      key="in"
+      label="Zoom in"
+      onClick={handle(onZoomIn, controls.zoomIn)}
+      className={classNames?.button}
+    >
+      <PiPlus />
+    </MapControlButton>
+  );
+  const zoomOut = (
+    <MapControlButton
+      key="out"
+      label="Zoom out"
+      onClick={handle(onZoomOut, controls.zoomOut)}
+      className={classNames?.button}
+    >
+      <PiMinus />
+    </MapControlButton>
+  );
+
   return (
     <div
+      data-slot="map-controls"
+      data-orientation={orientation}
       className={cn(
-        "absolute z-10 flex flex-col gap-1.5",
+        "absolute z-10 flex gap-2",
+        orientation === "vertical" ? "flex-col" : "flex-row",
+        orientation === "vertical"
+          ? isLeft
+            ? "items-start"
+            : "items-end"
+          : isTop
+            ? "items-start"
+            : "items-end",
         positionClasses[position],
         className,
+        classNames?.root,
       )}
     >
-      {showZoom && (
-        <ControlGroup>
-          <ControlButton onClick={handleZoomIn} label="Zoom in">
-            <Plus className="size-4" />
-          </ControlButton>
-          <ControlButton onClick={handleZoomOut} label="Zoom out">
-            <Minus className="size-4" />
-          </ControlButton>
-        </ControlGroup>
+      {children}
+      {showMeasure && (
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("measure")}
+        >
+          <MapControlButton
+            label="Measure distance"
+            active={measureActive}
+            onClick={onMeasureClick}
+            className={classNames?.button}
+          >
+            <PiRuler />
+          </MapControlButton>
+        </MapControlGroup>
+      )}
+      {basemaps && basemaps.length > 0 && (
+        <BasemapControl
+          basemaps={basemaps}
+          basemap={basemap}
+          defaultBasemap={defaultBasemap}
+          onBasemapChange={onBasemapChange}
+          title={basemapTitle}
+          side={
+            orientation === "horizontal"
+              ? isTop
+                ? "bottom"
+                : "top"
+              : isLeft
+                ? "right"
+                : "left"
+          }
+          align={
+            orientation === "horizontal"
+              ? isLeft
+                ? "start"
+                : "end"
+              : isTop
+                ? "start"
+                : "end"
+          }
+          orientation={innerOrientation}
+          classNames={classNames}
+        />
       )}
       {showCompass && (
-        <ControlGroup>
-          <CompassButton onClick={handleResetBearing} />
-        </ControlGroup>
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("compass")}
+        >
+          <CompassButton
+            onClick={handle(onResetBearing, controls.resetBearing)}
+            className={classNames?.button}
+          />
+        </MapControlGroup>
       )}
       {showPitch && (
-        <ControlGroup>
-          <ControlButton onClick={handlePitchUp} label="Tilt up">
-            <ChevronUp className="size-4" />
-          </ControlButton>
-          <ControlButton onClick={handlePitchDown} label="Tilt down">
-            <ChevronDown className="size-4" />
-          </ControlButton>
-        </ControlGroup>
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("pitch")}
+        >
+          <MapControlButton
+            label="Tilt up"
+            onClick={handle(onPitchUp, controls.pitchUp)}
+            className={classNames?.button}
+          >
+            <ChevronUp />
+          </MapControlButton>
+          <MapControlButton
+            label="Tilt down"
+            onClick={handle(onPitchDown, controls.pitchDown)}
+            className={classNames?.button}
+          >
+            <ChevronDown />
+          </MapControlButton>
+        </MapControlGroup>
       )}
       {showLocate && (
-        <ControlGroup>
-          <ControlButton
-            onClick={handleLocate}
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("locate")}
+        >
+          <MapControlButton
             label="Find my location"
-            disabled={waitingForLocation}
+            onClick={handle(onLocateClick, controls.locate)}
+            disabled={controls.isLocating}
+            className={classNames?.button}
           >
-            {waitingForLocation ? (
-              <Loader2 className="size-4 animate-spin" />
+            {controls.isLocating ? (
+              <Loader2 className="animate-spin" />
             ) : (
-              <Locate className="size-4" />
+              <PiCrosshairLight />
             )}
-          </ControlButton>
-        </ControlGroup>
+          </MapControlButton>
+        </MapControlGroup>
       )}
       {showFullscreen && (
-        <ControlGroup>
-          <ControlButton onClick={handleFullscreen} label="Toggle fullscreen">
-            <Maximize className="size-4" />
-          </ControlButton>
-        </ControlGroup>
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("fullscreen")}
+        >
+          <MapControlButton
+            label="Toggle fullscreen"
+            onClick={handle(onFullscreenClick, controls.toggleFullscreen)}
+            className={classNames?.button}
+          >
+            <Maximize />
+          </MapControlButton>
+        </MapControlGroup>
+      )}
+      {showZoom && (
+        <MapControlGroup
+          orientation={innerOrientation}
+          className={groupClass("zoom")}
+        >
+          {/* Reads left-to-right as − + in a row, top-to-bottom as + − in a column. */}
+          {innerOrientation === "horizontal"
+            ? [zoomOut, zoomIn]
+            : [zoomIn, zoomOut]}
+        </MapControlGroup>
       )}
     </div>
   );
 }
 
-function CompassButton({ onClick }: { onClick: () => void }) {
+function BasemapControl({
+  basemaps,
+  basemap,
+  defaultBasemap,
+  onBasemapChange,
+  title,
+  side,
+  align,
+  orientation,
+  classNames,
+}: {
+  basemaps: MapBasemap[];
+  basemap?: string;
+  defaultBasemap?: string;
+  onBasemapChange?: (basemap: MapBasemap) => void;
+  title: string;
+  side: "top" | "bottom" | "left" | "right";
+  align: "start" | "end";
+  orientation: MapControlsOrientation;
+  classNames?: MapControlsClassNames;
+}) {
+  const { map } = useMap();
+  const [open, setOpen] = useState(false);
+  const [uncontrolled, setUncontrolled] = useState(
+    defaultBasemap ?? basemaps[0]?.id,
+  );
+  const selectedId = basemap ?? uncontrolled;
+
+  const select = (option: MapBasemap) => {
+    setUncontrolled(option.id);
+    if (option.style && option.id !== selectedId) {
+      map?.setStyle(option.style);
+    }
+    onBasemapChange?.(option);
+    setOpen(false);
+  };
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <MapControlGroup
+        orientation={orientation}
+        className={cn(classNames?.group, classNames?.basemap)}
+      >
+        <Popover.Trigger asChild>
+          <MapControlButton
+            label="Change basemap"
+            active={open}
+            className={classNames?.button}
+          >
+            <PiMapTrifold />
+          </MapControlButton>
+        </Popover.Trigger>
+      </MapControlGroup>
+      {/* No portal: the panel stays inside the map container, so it still
+          shows when the map is fullscreen. */}
+      <Popover.Content
+        side={side}
+        align={align}
+        sideOffset={8}
+        className={cn(
+          "border-border-01 bg-surface-base z-20 space-y-1 rounded-14 border p-2 shadow-popover outline-none",
+          classNames?.basemapPanel,
+        )}
+      >
+        <p className="text-display-subtext-02 mb-2 text-[0.625rem] font-medium">
+          {title}
+        </p>
+        <div className="flex gap-1">
+          {basemaps.map((option) => {
+            const selected = option.id === selectedId;
+            return (
+              <Button
+                key={option.id}
+                variant="ghost"
+                aria-pressed={selected}
+                onClick={() => select(option)}
+                className={cn(
+                  "group/basemap text-display-body h-auto flex-col gap-1.5 rounded-12 p-0 text-[0.8125rem] font-normal hover:bg-transparent focus-visible:ring-0",
+                  classNames?.basemapOption,
+                )}
+              >
+                <span
+                  className={cn(
+                    "bg-surface-level-01 block h-14 w-20 overflow-hidden rounded-12 border-2 transition-colors",
+                    "group-focus-visible/basemap:ring-ring/50 group-focus-visible/basemap:ring-3",
+                    selected
+                      ? "border-spot-02"
+                      : "border-transparent group-hover/basemap:border-border-00",
+                  )}
+                >
+                  {option.thumbnail && (
+                    <img
+                      src={option.thumbnail}
+                      alt=""
+                      className="size-full object-cover"
+                      draggable={false}
+                    />
+                  )}
+                </span>
+                {option.label}
+              </Button>
+            );
+          })}
+        </div>
+      </Popover.Content>
+    </Popover.Root>
+  );
+}
+
+function CompassButton({
+  onClick,
+  className,
+}: {
+  onClick: () => void;
+  className?: string;
+}) {
   const { map } = useMap();
   const compassRef = useRef<SVGSVGElement>(null);
 
@@ -909,7 +1383,11 @@ function CompassButton({ onClick }: { onClick: () => void }) {
   }, [map]);
 
   return (
-    <ControlButton onClick={onClick} label="Reset bearing to north">
+    <MapControlButton
+      onClick={onClick}
+      label="Reset bearing to north"
+      className={className}
+    >
       <svg
         ref={compassRef}
         viewBox="0 0 24 24"
@@ -921,7 +1399,7 @@ function CompassButton({ onClick }: { onClick: () => void }) {
         <path d="M12 22L16 12H12V22Z" className="fill-muted-foreground/60" />
         <path d="M12 22L8 12H12V22Z" className="fill-muted-foreground/30" />
       </svg>
-    </ControlButton>
+    </MapControlButton>
   );
 }
 
@@ -1209,7 +1687,12 @@ function MapRasterLayer({
       {...(minzoom !== undefined ? { minzoom } : {})}
       {...(maxzoom !== undefined ? { maxzoom } : {})}
     >
-      <Layer id={layerId} type="raster" paint={mergedPaint} beforeId={beforeId} />
+      <Layer
+        id={layerId}
+        type="raster"
+        paint={mergedPaint}
+        beforeId={beforeId}
+      />
     </Source>
   );
 }
@@ -1464,11 +1947,11 @@ function MapGeoJSON<
   const fillLayerId = `geojson-fill-${id}`;
   const lineLayerId = `geojson-line-${id}`;
 
-  useImperativeHandle(
-    ref,
-    () => ({ sourceId, fillLayerId, lineLayerId }),
-    [sourceId, fillLayerId, lineLayerId],
-  );
+  useImperativeHandle(ref, () => ({ sourceId, fillLayerId, lineLayerId }), [
+    sourceId,
+    fillLayerId,
+    lineLayerId,
+  ]);
 
   const defaults = GEOJSON_DEFAULT_COLORS[resolvedTheme];
 
@@ -1750,11 +2233,11 @@ function MapArc<T extends MapArcDatum = MapArcDatum>({
   const layerId = `arc-layer-${id}`;
   const hitLayerId = `arc-hit-layer-${id}`;
 
-  useImperativeHandle(
-    ref,
-    () => ({ sourceId, layerId, hitLayerId }),
-    [sourceId, layerId, hitLayerId],
-  );
+  useImperativeHandle(ref, () => ({ sourceId, layerId, hitLayerId }), [
+    sourceId,
+    layerId,
+    hitLayerId,
+  ]);
 
   const mergedPaint = useMemo(
     () => mergeHoverPaint({ ...DEFAULT_ARC_PAINT, ...paint }, hoverPaint),
@@ -1973,7 +2456,12 @@ function MapClusterLayer<
 
   useImperativeHandle(
     ref,
-    () => ({ sourceId, clusterLayerId, clusterCountLayerId, unclusteredLayerId }),
+    () => ({
+      sourceId,
+      clusterLayerId,
+      clusterCountLayerId,
+      unclusteredLayerId,
+    }),
     [sourceId, clusterLayerId, clusterCountLayerId, unclusteredLayerId],
   );
 
@@ -2167,6 +2655,9 @@ export {
   MarkerLabel,
   MapPopup,
   MapControls,
+  MapControlGroup,
+  MapControlButton,
+  useMapControls,
   MapRoute,
   MapRasterLayer,
   MapHillshade,
@@ -2175,6 +2666,7 @@ export {
   MapArc,
   MapGeoJSON,
   MapClusterLayer,
+  basemaps,
 };
 
 export type {
@@ -2193,6 +2685,13 @@ export type {
   MarkerTooltipProps,
   MarkerLabelProps,
   MapControlsProps,
+  MapControlsClassNames,
+  MapControlsHandlers,
+  MapControlsOrientation,
+  MapControlsPosition,
+  MapControlGroupProps,
+  MapControlButtonProps,
+  MapBasemap,
   MapPopupProps,
   MapRouteProps,
   MapRouteHandle,
