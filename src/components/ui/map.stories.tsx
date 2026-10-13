@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type * as GeoJSON from "geojson";
+import type { MapMouseEvent } from "maplibre-gl";
 import {
   DndContext,
   closestCenter,
@@ -18,14 +19,25 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2 } from "lucide-react";
+import {
+  Compass,
+  GripVertical,
+  Loader2,
+  LocateFixed,
+  Minus,
+  Plus,
+  RotateCcw,
+} from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Map,
   MapArc,
   MapClusterLayer,
   MapControls,
+  MapControlButton,
+  MapControlGroup,
   MapGeoJSON,
   MapHillshade,
   MapMarker,
@@ -37,9 +49,13 @@ import {
   MarkerLabel,
   MarkerPopup,
   MarkerTooltip,
+  basemaps,
   cogUrl,
   useMap,
+  useMapControls,
   type MapArcDatum,
+  type MapBasemap,
+  type MapStyleOption,
   type MapClusterLayerHandle,
   type MapGeoJSONHandle,
   type MapRouteHandle,
@@ -56,6 +72,8 @@ const meta = {
     MarkerPopup,
     MapPopup,
     MapControls,
+    MapControlGroup,
+    MapControlButton,
     MapRoute,
     MapRasterLayer,
     MapHillshade,
@@ -600,15 +618,17 @@ function LayerRow({
         isDragging && "opacity-50",
       )}
     >
-      <button
+      <Button
+        variant="ghost"
+        size="icon-xs"
         type="button"
         aria-label={`Reorder ${label}`}
-        className="text-muted-foreground -mx-1 flex size-5 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+        className="text-muted-foreground -mx-1 size-5 cursor-grab touch-none active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="size-4" />
-      </button>
+      </Button>
       <label className="flex flex-1 cursor-pointer items-center gap-2">
         <input
           type="checkbox"
@@ -936,3 +956,296 @@ export const TerrainAndHillshade: Story = {
   ),
 };
 
+// --- Story 8: map controls ---------------------------------------------------
+
+const LAGOS: [number, number] = [3.3792, 6.5244];
+
+const SATELLITE_STYLE = basemaps.satellite.style;
+
+// Options without `style`, so the first story handles the switch itself.
+const BASEMAPS = [basemaps.satellite, basemaps.street].map(
+  ({ style: _style, ...option }) => option,
+) satisfies MapBasemap[];
+
+const BASEMAP_STYLES: Record<string, MapStyleOption> = {
+  satellite: basemaps.satellite.style,
+  street: basemaps.street.style,
+};
+
+function haversineKm(
+  [lng1, lat1]: [number, number],
+  [lng2, lat2]: [number, number],
+) {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Minimal click-to-measure tool driven by the measure control's toggle.
+function MeasureTool({
+  active,
+  points,
+  onAddPoint,
+}: {
+  active: boolean;
+  points: [number, number][];
+  onAddPoint: (point: [number, number]) => void;
+}) {
+  const { map } = useMap();
+
+  useEffect(() => {
+    if (!map || !active) return;
+    const canvas = map.getCanvas();
+    canvas.style.cursor = "crosshair";
+    const handleClick = (e: MapMouseEvent) =>
+      onAddPoint([e.lngLat.lng, e.lngLat.lat]);
+    map.on("click", handleClick);
+    return () => {
+      canvas.style.cursor = "";
+      map.off("click", handleClick);
+    };
+  }, [map, active, onAddPoint]);
+
+  return (
+    <>
+      {points.length > 1 && (
+        <MapRoute
+          coordinates={points}
+          color="#f59e0b"
+          width={3}
+          dashArray={[2, 1]}
+          interactive={false}
+        />
+      )}
+      {points.map(([lng, lat], i) => (
+        <MapMarker key={i} longitude={lng} latitude={lat}>
+          <MarkerContent>
+            <div className="size-3 rounded-full border-2 border-white bg-orange-400 shadow" />
+          </MarkerContent>
+        </MapMarker>
+      ))}
+    </>
+  );
+}
+
+function MeasureReadout({
+  active,
+  points,
+  onClear,
+}: {
+  active: boolean;
+  points: [number, number][];
+  onClear: () => void;
+}) {
+  if (!active && points.length === 0) return null;
+  const km = points
+    .slice(1)
+    .reduce((sum, point, i) => sum + haversineKm(points[i], point), 0);
+  return (
+    <div className="bg-surface-base border-border-00 absolute top-3 left-3 z-10 flex items-center gap-3 rounded-12 border px-3 py-2 text-sm shadow-sm">
+      <span className="text-display-body">
+        {points.length < 2
+          ? "Click the map to start measuring"
+          : `Distance: ${km < 1 ? `${(km * 1000).toFixed(0)} m` : `${km.toFixed(2)} km`}`}
+      </span>
+      {points.length > 0 && (
+        <Button variant="ghost" size="xs" onClick={onClear}>
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ControlsToolbarDemo() {
+  const [basemap, setBasemap] = useState("satellite");
+  const [measuring, setMeasuring] = useState(false);
+  const [points, setPoints] = useState<[number, number][]>([]);
+  const style = BASEMAP_STYLES[basemap];
+
+  const addPoint = useCallback(
+    (point: [number, number]) => setPoints((prev) => [...prev, point]),
+    [],
+  );
+
+  return (
+    <MapCanvas>
+      <Map
+        viewport={{ center: LAGOS, zoom: 12 }}
+        styles={{ light: style, dark: style }}
+      >
+        <MeasureTool active={measuring} points={points} onAddPoint={addPoint} />
+        <MeasureReadout
+          active={measuring}
+          points={points}
+          onClear={() => setPoints([])}
+        />
+        <MapControls
+          orientation="horizontal"
+          showMeasure
+          measureActive={measuring}
+          onMeasureClick={() => setMeasuring((on) => !on)}
+          basemaps={BASEMAPS}
+          basemap={basemap}
+          onBasemapChange={(option) => setBasemap(option.id)}
+          showLocate
+        />
+      </Map>
+    </MapCanvas>
+  );
+}
+
+export const ControlsToolbar: Story = {
+  name: "Controls: horizontal toolbar",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`MapControls` laid out in a row with `orientation="horizontal"`: a measure toggle, a basemap switcher, locate and zoom. The parent owns the state and just passes functions in — `onMeasureClick` toggles a small click-to-measure tool, and `onBasemapChange` swaps `<Map styles>` (the options carry no `style`, so the control leaves the switch to you).',
+      },
+    },
+  },
+  render: () => <ControlsToolbarDemo />,
+};
+
+export const ControlsVertical: Story = {
+  name: "Controls: vertical stack",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'The same controls stacked in a column (`orientation="vertical"`, the default) in the top-right corner. Here each basemap option carries its own `style`, so the switcher applies it with `map.setStyle()` without any parent state. Use `groupOrientation` to lay buttons inside a group differently from the stack.',
+      },
+    },
+  },
+  render: () => (
+    <MapCanvas>
+      <Map
+        viewport={{ center: LAGOS, zoom: 12 }}
+        styles={{ light: SATELLITE_STYLE, dark: SATELLITE_STYLE }}
+      >
+        <MapControls
+          position="top-right"
+          orientation="vertical"
+          basemaps={BASEMAPS.map((option) => ({
+            ...option,
+            style: BASEMAP_STYLES[option.id],
+          }))}
+          showCompass
+          showLocate
+          showFullscreen
+        />
+      </Map>
+    </MapCanvas>
+  ),
+};
+
+// A fully custom control bar built from the exported pieces: the actions come
+// from `useMapControls`, the visuals from `MapControlGroup` / `MapControlButton`.
+function CustomControlBar({ onAction }: { onAction: (name: string) => void }) {
+  const { zoomIn, zoomOut, resetBearing, locate, isLocating } = useMapControls({
+    zoomStep: 2,
+  });
+
+  return (
+    <div className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2">
+      <MapControlGroup
+        orientation="horizontal"
+        className="rounded-full bg-neutral-900 border-neutral-800 divide-neutral-800"
+      >
+        {[
+          { label: "Zoom out ×2", icon: <Minus />, run: zoomOut },
+          { label: "Zoom in ×2", icon: <Plus />, run: zoomIn },
+          { label: "Face north", icon: <Compass />, run: resetBearing },
+          {
+            label: "Find me",
+            icon: isLocating ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <LocateFixed />
+            ),
+            run: locate,
+          },
+        ].map(({ label, icon, run }) => (
+          <MapControlButton
+            key={label}
+            label={label}
+            onClick={() => {
+              run();
+              onAction(label);
+            }}
+            className="bg-neutral-900 text-white hover:bg-neutral-700"
+          >
+            {icon}
+          </MapControlButton>
+        ))}
+      </MapControlGroup>
+    </div>
+  );
+}
+
+function CustomControlsDemo() {
+  const [lastAction, setLastAction] = useState<string>("—");
+
+  return (
+    <MapCanvas>
+      <Map viewport={{ center: LAGOS, zoom: 11 }}>
+        <div className="bg-surface-base border-border-00 absolute top-3 left-3 z-10 rounded-12 border px-3 py-2 text-sm shadow-sm">
+          Last action: <span className="font-medium">{lastAction}</span>
+        </div>
+
+        {/* Built-in controls, each styled independently and with zoom
+            behaviour replaced by your own functions. */}
+        <MapControls
+          position="top-right"
+          showCompass
+          showFullscreen
+          classNames={{
+            root: "gap-3",
+            zoom: "rounded-full",
+            compass: "rounded-full",
+            fullscreen: "bg-orange-400 border-orange-400",
+            button: "text-display-body",
+          }}
+          onZoomIn={(map) => {
+            map.easeTo({ zoom: map.getZoom() + 0.5, duration: 200 });
+            setLastAction("Custom zoom in (+0.5)");
+          }}
+          onZoomOut={(map) => {
+            map.easeTo({ zoom: map.getZoom() - 0.5, duration: 200 });
+            setLastAction("Custom zoom out (−0.5)");
+          }}
+        >
+          {/* Children render first, in the same stack as the built-ins. */}
+          <MapControlGroup className="rounded-full">
+            <MapControlButton
+              label="Reset view"
+              onClick={() => setLastAction("Reset view (custom child)")}
+            >
+              <RotateCcw />
+            </MapControlButton>
+          </MapControlGroup>
+        </MapControls>
+
+        <CustomControlBar onAction={setLastAction} />
+      </Map>
+    </MapCanvas>
+  );
+}
+
+export const ControlsCustom: Story = {
+  name: "Controls: custom styling & handlers",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Three ways to customise controls. (1) `classNames` styles each built-in control independently (`zoom`, `compass`, `fullscreen`, `button`, `root`, …). (2) Handler props like `onZoomIn` / `onZoomOut` replace the built-in action and receive the map instance. (3) For a bar of your own, compose `MapControlGroup` + `MapControlButton` and pull the actions from `useMapControls` — the bottom bar here zooms by 2 levels.",
+      },
+    },
+  },
+  render: () => <CustomControlsDemo />,
+};
