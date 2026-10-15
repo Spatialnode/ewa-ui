@@ -765,7 +765,7 @@ function MapControlGroup({
         data-slot="map-control-group"
         data-orientation={orientation}
         className={cn(
-          "bg-surface-base divide-border-00 flex w-fit overflow-hidden rounded-8 shadow-sm",
+          "bg-surface-base divide-border-00 flex w-fit overflow-hidden rounded-10 shadow-sm",
           orientation === "vertical"
             ? "flex-col divide-y"
             : "flex-row divide-x",
@@ -790,7 +790,8 @@ type MapControlButtonProps = Omit<
 /**
  * An icon button styled for the map (Button's `map-icon` variant). Inside a
  * `MapControlGroup` it drops its own border and shadow so the group reads as
- * one tile; on its own it is a standalone rounded tile.
+ * one tile and squares its corners so the group's radius clips its fill; on
+ * its own it is a standalone rounded tile.
  */
 function MapControlButton({
   label,
@@ -813,7 +814,9 @@ function MapControlButton({
       className={cn(
         "border-none focus-visible:ring-0 [&_svg:not([class*='size-'])]:size-4",
         "disabled:bg-surface-base disabled:opacity-50",
-        group ? "rounded-10" : "rounded-10 shadow-sm",
+        // In a group, square corners let the hover/pressed fill reach the
+        // edges; the group's overflow-hidden clips it to the group's radius.
+        group ? "rounded-none" : "rounded-10 shadow-sm",
         className,
       )}
       {...props}
@@ -1009,6 +1012,13 @@ type MapControlsProps = MapControlsHandlers & {
   onBasemapChange?: (basemap: MapBasemap) => void;
   /** Heading of the basemap panel (default: "Basemap") */
   basemapTitle?: string;
+  /**
+   * Keep the selected basemap in the URL hash, so reloads and shared links
+   * reopen on it. `true` uses the `basemap` key; pass a string to use another.
+   * Shares the hash with `<Map hash="…">`, e.g. `#map=11/6.4/3.3&basemap=satellite`.
+   * Assumes `<Map styles>` starts on `defaultBasemap` (default: false)
+   */
+  syncBasemapToUrl?: boolean | string;
   /** Additional CSS classes for the controls container */
   className?: string;
   /** Per-control class names for independent styling */
@@ -1045,6 +1055,7 @@ function MapControls({
   defaultBasemap,
   onBasemapChange,
   basemapTitle = "Basemap",
+  syncBasemapToUrl = false,
   className,
   classNames,
   onLocate,
@@ -1140,6 +1151,11 @@ function MapControls({
           defaultBasemap={defaultBasemap}
           onBasemapChange={onBasemapChange}
           title={basemapTitle}
+          urlParam={
+            syncBasemapToUrl === true
+              ? "basemap"
+              : syncBasemapToUrl || undefined
+          }
           side={
             orientation === "horizontal"
               ? isTop
@@ -1242,12 +1258,43 @@ function MapControls({
   );
 }
 
+/**
+ * Reads one `key=value` entry from the URL hash. Entries are `&`-separated and
+ * left unencoded, matching maplibre-gl's own hash (`map=11/6.4/3.3`), so both
+ * can share it.
+ */
+function getHashParam(name: string): string | null {
+  if (typeof window === "undefined") return null;
+  for (const part of window.location.hash.slice(1).split("&")) {
+    const [key, ...value] = part.split("=");
+    if (key === name) return decodeURIComponent(value.join("="));
+  }
+  return null;
+}
+
+/**
+ * Sets one entry in the URL hash, keeping every other entry as-is. Uses
+ * `replaceState`, like maplibre-gl, so it adds no history entries.
+ */
+function setHashParam(name: string, value: string) {
+  if (typeof window === "undefined") return;
+  const parts = window.location.hash.slice(1).split("&").filter(Boolean);
+  const entry = `${name}=${encodeURIComponent(value)}`;
+  const index = parts.findIndex((part) => part.split("=")[0] === name);
+  if (index >= 0) parts[index] = entry;
+  else parts.push(entry);
+  const url = new URL(window.location.href);
+  url.hash = parts.join("&");
+  window.history.replaceState(window.history.state, "", url.href);
+}
+
 function BasemapControl({
   basemaps,
   basemap,
   defaultBasemap,
   onBasemapChange,
   title,
+  urlParam,
   side,
   align,
   orientation,
@@ -1258,23 +1305,44 @@ function BasemapControl({
   defaultBasemap?: string;
   onBasemapChange?: (basemap: MapBasemap) => void;
   title: string;
+  /** Hash key the selection is synced to; omitted means no URL sync */
+  urlParam?: string;
   side: "top" | "bottom" | "left" | "right";
   align: "start" | "end";
   orientation: MapControlsOrientation;
   classNames?: MapControlsClassNames;
 }) {
-  const { map } = useMap();
+  const { map, isLoaded } = useMap();
   const [open, setOpen] = useState(false);
-  const [uncontrolled, setUncontrolled] = useState(
-    defaultBasemap ?? basemaps[0]?.id,
-  );
+  const initialId = defaultBasemap ?? basemaps[0]?.id;
+  const [uncontrolled, setUncontrolled] = useState(() => {
+    const fromUrl = urlParam ? getHashParam(urlParam) : null;
+    return basemaps.some((option) => option.id === fromUrl)
+      ? (fromUrl as string)
+      : initialId;
+  });
   const selectedId = basemap ?? uncontrolled;
+
+  // Apply a basemap restored from the URL once the map has loaded. The map
+  // starts on <Map styles> (the default basemap), so only switch if it differs.
+  const restoredFromUrl = useRef(false);
+  useEffect(() => {
+    if (!urlParam || !map || !isLoaded || restoredFromUrl.current) return;
+    restoredFromUrl.current = true;
+    const option = basemaps.find(
+      (candidate) => candidate.id === getHashParam(urlParam),
+    );
+    if (!option || option.id === initialId) return;
+    if (option.style) map.setStyle(option.style);
+    onBasemapChange?.(option);
+  }, [urlParam, map, isLoaded, basemaps, initialId, onBasemapChange]);
 
   const select = (option: MapBasemap) => {
     setUncontrolled(option.id);
     if (option.style && option.id !== selectedId) {
       map?.setStyle(option.style);
     }
+    if (urlParam) setHashParam(urlParam, option.id);
     onBasemapChange?.(option);
     setOpen(false);
   };
