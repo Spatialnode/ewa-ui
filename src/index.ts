@@ -15,3 +15,4 @@ export * from "./components/ui/radio-group";
 export * from "./components/ui/table";
 export * from "./components/data-table";
 export * from "./components/ui/chart";
+export * from "./components/ui/toast";
