@@ -14,7 +14,7 @@ const sizes = ["sm", "default", "lg"] as const;
 const people = [
   { name: "Samuel Peters", initials: "SP" },
   { name: "Michael Chen", initials: "MC" },
-  { name: "Sundry Food", initials: "SN" },
+  { name: "Grace Johnson", initials: "GJ" },
   { name: "Amaka Obi", initials: "AO" },
   { name: "Tunde Bello", initials: "TB" },
 ] as const;
@@ -103,7 +103,7 @@ export const CurrentUser: Story = {
   render: (args) => (
     <div className="flex items-center gap-3">
       <Avatar {...args}>
-        <AvatarFallback>SN</AvatarFallback>
+        <AvatarFallback>SP</AvatarFallback>
       </Avatar>
       <span className="text-base text-foreground">Samuel Peters (You)</span>
     </div>
@@ -120,13 +120,13 @@ export const ActivityItem: Story = {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="text-base font-medium text-foreground">
-            Add new candidate site
+            Created a new project
           </span>
           <span className="size-1 rounded-full bg-muted-foreground/40" />
           <span className="text-sm text-muted-foreground">5m ago</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Michael Chen added Victoria Island for evaluation
+          Michael Chen added Project Alpha for review
         </p>
       </div>
     </div>
@@ -139,13 +139,13 @@ export const AccountCard: Story = {
   render: (args) => (
     <div className="flex items-center gap-3">
       <Avatar {...args}>
-        <AvatarFallback>SN</AvatarFallback>
+        <AvatarFallback>GJ</AvatarFallback>
       </Avatar>
       <div className="flex flex-col">
         <span className="text-base font-medium text-foreground">
-          Sundry Food
+          Grace Johnson
         </span>
-        <span className="text-sm text-muted-foreground">name@sundry.ng</span>
+        <span className="text-sm text-muted-foreground">grace@example.com</span>
       </div>
     </div>
   ),

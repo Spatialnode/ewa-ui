@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PiX } from "react-icons/pi";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -53,7 +53,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl bg-surface-base p-4 text-sm text-display-body duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid w-full overflow-clip bg-surface-base max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-0 rounded-16 border border-border-00 p-0 text-sm text-display-body duration-100 outline-none sm:max-w-126.5 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -63,12 +63,8 @@ function DialogContent({
           <DialogPrimitive.Close
             data-slot="dialog-close"
             render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="icon-sm"
-              >
-                <XIcon />
+              <Button variant="ghost" className="absolute top-2 right-2">
+                <PiX className="size-5 text-icon-nav" />
                 <span className="sr-only">Close</span>
               </Button>
             }
@@ -83,7 +79,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 border-b border-border-01", className)}
+      className={cn(
+        "flex flex-col gap-2 border-b border-border-01 px-4 py-3",
+        className,
+      )}
       {...props}
     />
   );
@@ -101,7 +100,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-border-01 bg-surface-base border p-4 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-4 bg-surface-base border-t border-border-01 p-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}
@@ -121,7 +120,7 @@ function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "cn-font-heading text-base leading-none font-medium",
+        "cn-font-heading text-base text-display-subtext-01 leading-none font-medium",
         className,
       )}
       {...props}

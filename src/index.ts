@@ -14,5 +14,7 @@ export * from "./components/ui/checkbox";
 export * from "./components/ui/radio-group";
 export * from "./components/ui/table";
 export * from "./components/data-table";
+export * from "./components/app-dialog";
 export * from "./components/ui/chart";
 export * from "./components/ui/toast";
+export * from "./components/ui/dropdown-menu";

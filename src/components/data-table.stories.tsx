@@ -93,7 +93,7 @@ const meta = {
   args: {
     columns,
     data: projects,
-    enableSorting: false,
+    enableSorting: true,
     stickyHeader: true,
     isLoading: false,
   },
@@ -105,8 +105,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const Sortable: Story = {
-  args: { enableSorting: true },
+export const SortingDisabled: Story = {
+  args: { enableSorting: false },
 };
 
 export const Loading: Story = {
