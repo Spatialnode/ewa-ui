@@ -155,26 +155,26 @@ function buildDemandPoints(
   };
 }
 
-// --- Story 1: route + business location -----------------------------------
+// --- Story 1: route between two points ------------------------------------
 
-const WAREHOUSE: [number, number] = [-122.3872, 37.7803];
-const COFFEE_ROASTERY: [number, number] = [-122.3937, 37.7955];
+const ORIGIN: [number, number] = [-122.3872, 37.7803];
+const DESTINATION: [number, number] = [-122.3937, 37.7955];
 
 const DELIVERY_ROUTE: [number, number][] = [
-  WAREHOUSE,
+  ORIGIN,
   [-122.3915, 37.7845],
   [-122.3902, 37.7891],
   [-122.3928, 37.7932],
-  COFFEE_ROASTERY,
+  DESTINATION,
 ];
 
-export const RouteToBusinessLocation: Story = {
-  name: "Route & business location",
+export const RouteBetweenPoints: Story = {
+  name: "Route between points",
   parameters: {
     docs: {
       description: {
         story:
-          "A delivery route (`MapRoute`) between a warehouse and a business, with the destination as a `MapMarker` — click it to open its `MarkerPopup`.",
+          "A route (`MapRoute`) between two points, with the destination as a `MapMarker` — click it to open its `MarkerPopup`.",
       },
     },
   },
@@ -182,24 +182,21 @@ export const RouteToBusinessLocation: Story = {
     <MapCanvas>
       <Map viewport={{ center: [-122.3905, 37.7885], zoom: 13.5 }}>
         <MapRoute coordinates={DELIVERY_ROUTE} color="#2563eb" width={4} />
-        <MapMarker longitude={WAREHOUSE[0]} latitude={WAREHOUSE[1]}>
+        <MapMarker longitude={ORIGIN[0]} latitude={ORIGIN[1]}>
           <MarkerContent>
             <div className="h-4 w-4 rounded-sm border-2 border-white bg-neutral-500 shadow-lg" />
           </MarkerContent>
-          <MarkerLabel>Distribution warehouse</MarkerLabel>
+          <MarkerLabel>Origin</MarkerLabel>
         </MapMarker>
-        <MapMarker longitude={COFFEE_ROASTERY[0]} latitude={COFFEE_ROASTERY[1]}>
+        <MapMarker longitude={DESTINATION[0]} latitude={DESTINATION[1]}>
           <MarkerContent />
           <MarkerPopup closeButton>
-            <p className="text-sm font-medium">Bluebird Coffee Roasters</p>
+            <p className="text-sm font-medium">Destination</p>
             <p className="text-muted-foreground text-xs">
-              Ferry Building, San Francisco
-            </p>
-            <p className="text-muted-foreground text-xs">
-              4.2 mi from warehouse
+              4.2 mi from origin
             </p>
           </MarkerPopup>
-          <MarkerLabel>Bluebird Coffee Roasters</MarkerLabel>
+          <MarkerLabel>Destination</MarkerLabel>
         </MapMarker>
         <MapControls showZoom showCompass />
       </Map>
@@ -209,8 +206,8 @@ export const RouteToBusinessLocation: Story = {
 
 // --- Story 1a: OSRM-routed directions ----------------------------------------
 
-const IKEJA_DEPOT = { name: "Ikeja depot", lng: 3.3515, lat: 6.6018 };
-const LEKKI_STORE = { name: "Lekki Phase 1 store", lng: 3.4732, lat: 6.4392 };
+const ROUTE_START = { name: "Start", lng: 3.3515, lat: 6.6018 };
+const ROUTE_END = { name: "End", lng: 3.4732, lat: 6.4392 };
 
 function formatDuration(seconds: number): string {
   const mins = Math.round(seconds / 60);
@@ -237,7 +234,7 @@ function OsrmRouteStory() {
 
     async function fetchRoute() {
       const response = await fetch(
-        `https://router.project-osrm.org/route/v1/driving/${IKEJA_DEPOT.lng},${IKEJA_DEPOT.lat};${LEKKI_STORE.lng},${LEKKI_STORE.lat}?overview=full&geometries=geojson`,
+        `https://router.project-osrm.org/route/v1/driving/${ROUTE_START.lng},${ROUTE_START.lat};${ROUTE_END.lng},${ROUTE_END.lat}?overview=full&geometries=geojson`,
       );
       const data = await response.json();
       const leg = data.routes?.[0];
@@ -262,8 +259,8 @@ function OsrmRouteStory() {
         <Map
           viewport={{
             center: [
-              (IKEJA_DEPOT.lng + LEKKI_STORE.lng) / 2,
-              (IKEJA_DEPOT.lat + LEKKI_STORE.lat) / 2,
+              (ROUTE_START.lng + ROUTE_END.lng) / 2,
+              (ROUTE_START.lat + ROUTE_END.lat) / 2,
             ],
             zoom: 11,
           }}
@@ -271,15 +268,15 @@ function OsrmRouteStory() {
           {route && (
             <MapRoute coordinates={route.coordinates} color="#2563eb" width={5} />
           )}
-          <MapMarker longitude={IKEJA_DEPOT.lng} latitude={IKEJA_DEPOT.lat}>
+          <MapMarker longitude={ROUTE_START.lng} latitude={ROUTE_START.lat}>
             <MarkerContent>
               <div className="h-4 w-4 rounded-sm border-2 border-white bg-neutral-500 shadow-lg" />
             </MarkerContent>
-            <MarkerLabel>{IKEJA_DEPOT.name}</MarkerLabel>
+            <MarkerLabel>{ROUTE_START.name}</MarkerLabel>
           </MapMarker>
-          <MapMarker longitude={LEKKI_STORE.lng} latitude={LEKKI_STORE.lat}>
+          <MapMarker longitude={ROUTE_END.lng} latitude={ROUTE_END.lat}>
             <MarkerContent />
-            <MarkerLabel>{LEKKI_STORE.name}</MarkerLabel>
+            <MarkerLabel>{ROUTE_END.name}</MarkerLabel>
           </MapMarker>
           <MapControls showZoom showCompass />
         </Map>
@@ -307,7 +304,7 @@ export const OsrmDrivingRoute: Story = {
     docs: {
       description: {
         story:
-          "A real driving route fetched from the public OSRM API between a depot in Ikeja and a store in Lekki, Lagos — rendered as a single `MapRoute` with no alternatives.",
+          "A real driving route fetched from the public OSRM API between two points — rendered as a single `MapRoute` with no alternatives.",
       },
     },
   },
@@ -334,11 +331,11 @@ function candidateSite(
 const CANDIDATE_SITES: GeoJSON.FeatureCollection<GeoJSON.Polygon, SiteProps> = {
   type: "FeatureCollection",
   features: [
-    candidateSite("Site A — SoMa", 58, [-122.4148, 37.7705]),
-    candidateSite("Site B — Mission", 71, [-122.4194, 37.7599]),
-    candidateSite("Site C — Union Square", 92, [-122.4058, 37.7858]),
-    candidateSite("Site D — Sunset", 44, [-122.4489, 37.7599]),
-    candidateSite("Site E — Noe Valley", 66, [-122.4313, 37.7451]),
+    candidateSite("Site A", 58, [-122.4148, 37.7705]),
+    candidateSite("Site B", 71, [-122.4194, 37.7599]),
+    candidateSite("Site C", 92, [-122.4058, 37.7858]),
+    candidateSite("Site D", 44, [-122.4489, 37.7599]),
+    candidateSite("Site E", 66, [-122.4313, 37.7451]),
   ],
 };
 
@@ -384,7 +381,7 @@ export const SiteSelectionResult: Story = {
           latitude={WINNING_SITE[1]}
           closeButton
         >
-          <p className="text-sm font-medium">Site C — Union Square</p>
+          <p className="text-sm font-medium">Site C</p>
           <p className="text-muted-foreground text-xs">
             Suitability score: 92 / 100
           </p>
@@ -398,50 +395,50 @@ export const SiteSelectionResult: Story = {
   ),
 };
 
-// --- Story 3: access to business sites --------------------------------------
+// --- Story 3: drive-time access --------------------------------------------
 
-type AccessArc = MapArcDatum & { site: string; minutes: number };
+type AccessArc = MapArcDatum & { name: string; minutes: number };
 
-const DISTRIBUTION_CENTER: [number, number] = [-122.3872, 37.758];
+const HUB: [number, number] = [-122.3872, 37.758];
 
 const ACCESS_ARCS: AccessArc[] = [
   {
-    id: "downtown",
-    from: DISTRIBUTION_CENTER,
+    id: "a",
+    from: HUB,
     to: [-122.4148, 37.7695],
-    site: "Downtown store",
+    name: "Point A",
     minutes: 9,
   },
   {
-    id: "wharf",
-    from: DISTRIBUTION_CENTER,
-    to: COFFEE_ROASTERY,
-    site: "Fisherman's Wharf store",
+    id: "b",
+    from: HUB,
+    to: DESTINATION,
+    name: "Point B",
     minutes: 13,
   },
   {
-    id: "noe-valley",
-    from: DISTRIBUTION_CENTER,
+    id: "c",
+    from: HUB,
     to: [-122.4313, 37.7451],
-    site: "Noe Valley store",
+    name: "Point C",
     minutes: 18,
   },
   {
-    id: "sunset",
-    from: DISTRIBUTION_CENTER,
+    id: "d",
+    from: HUB,
     to: [-122.4489, 37.7599],
-    site: "Sunset store",
+    name: "Point D",
     minutes: 24,
   },
 ];
 
-export const AccessToBusinessSites: Story = {
-  name: "Access to business sites",
+export const DriveTimeAccess: Story = {
+  name: "Drive-time access",
   parameters: {
     docs: {
       description: {
         story:
-          "Drive-time reachability from a distribution center to its stores — `MapArc` colored by a `minutes` property via a data-driven expression.",
+          "Drive-time reachability from a hub to four points — `MapArc` colored by a `minutes` property via a data-driven expression.",
       },
     },
   },
@@ -468,19 +465,19 @@ export const AccessToBusinessSites: Story = {
           hoverPaint={{ "line-width": 5 }}
         />
         <MapMarker
-          longitude={DISTRIBUTION_CENTER[0]}
-          latitude={DISTRIBUTION_CENTER[1]}
+          longitude={HUB[0]}
+          latitude={HUB[1]}
         >
           <MarkerContent>
             <div className="h-4 w-4 rounded-sm border-2 border-white bg-neutral-800 shadow-lg" />
           </MarkerContent>
-          <MarkerLabel>Regional distribution center</MarkerLabel>
+          <MarkerLabel>Hub</MarkerLabel>
         </MapMarker>
         {ACCESS_ARCS.map((arc) => (
           <MapMarker key={arc.id} longitude={arc.to[0]} latitude={arc.to[1]}>
             <MarkerContent />
             <MarkerLabel position="bottom">
-              {arc.site} · {arc.minutes} min
+              {arc.name} · {arc.minutes} min
             </MarkerLabel>
           </MapMarker>
         ))}
@@ -572,7 +569,7 @@ const CORRIDOR_ROUTE: [number, number][] = [
   [-122.4194, 37.7749],
   [-122.4108, 37.7822],
   [-122.4011, 37.7896],
-  COFFEE_ROASTERY,
+  DESTINATION,
 ];
 
 const DEMAND_POINTS = buildDemandPoints(180, [-122.47, 37.735, -122.39, 37.8]);
@@ -839,11 +836,11 @@ function MultipleLayersStory() {
               <MapClusterLayer data={DEMAND_POINTS} ref={clustersRef} />
             )}
             <MapMarker
-              longitude={COFFEE_ROASTERY[0]}
-              latitude={COFFEE_ROASTERY[1]}
+              longitude={DESTINATION[0]}
+              latitude={DESTINATION[1]}
             >
               <MarkerContent />
-              <MarkerLabel>Flagship store</MarkerLabel>
+              <MarkerLabel>Point of interest</MarkerLabel>
             </MapMarker>
             <MapControls showZoom showCompass />
             <LayerOrderApplier
@@ -864,7 +861,7 @@ export const MultipleLayers: Story = {
     docs: {
       description: {
         story:
-          "Trade-area polygons, a demand-point cluster, a route, and a store marker, with a drag-to-reorder layer panel — dragging a row calls `map.moveLayer` (via each layer's ref) so the map z-order always matches the list, and unchecking a row unmounts that layer.",
+          "Trade-area polygons, a demand-point cluster, a route, and a point marker, with a drag-to-reorder layer panel — dragging a row calls `map.moveLayer` (via each layer's ref) so the map z-order always matches the list, and unchecking a row unmounts that layer.",
       },
     },
   },
@@ -958,7 +955,7 @@ export const TerrainAndHillshade: Story = {
 
 // --- Story 8: map controls ---------------------------------------------------
 
-const LAGOS: [number, number] = [3.3792, 6.5244];
+const MAP_CENTER: [number, number] = [3.3792, 6.5244];
 
 const SATELLITE_STYLE = basemaps.satellite.style;
 
@@ -1075,7 +1072,7 @@ function ControlsToolbarDemo() {
   return (
     <MapCanvas>
       <Map
-        viewport={{ center: LAGOS, zoom: 12 }}
+        viewport={{ center: MAP_CENTER, zoom: 12 }}
         styles={{ light: style, dark: style }}
       >
         <MeasureTool active={measuring} points={points} onAddPoint={addPoint} />
@@ -1125,7 +1122,7 @@ export const ControlsVertical: Story = {
   render: () => (
     <MapCanvas>
       <Map
-        viewport={{ center: LAGOS, zoom: 12 }}
+        viewport={{ center: MAP_CENTER, zoom: 12 }}
         styles={{ light: SATELLITE_STYLE, dark: SATELLITE_STYLE }}
       >
         <MapControls
@@ -1193,7 +1190,7 @@ function CustomControlsDemo() {
 
   return (
     <MapCanvas>
-      <Map viewport={{ center: LAGOS, zoom: 11 }}>
+      <Map viewport={{ center: MAP_CENTER, zoom: 11 }}>
         <div className="bg-surface-base border-border-00 absolute top-3 left-3 z-10 rounded-12 border px-3 py-2 text-sm shadow-sm">
           Last action: <span className="font-medium">{lastAction}</span>
         </div>

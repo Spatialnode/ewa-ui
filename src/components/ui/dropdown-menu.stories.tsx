@@ -95,7 +95,7 @@ export const WithIconsAndShortcuts: Story = {
   ),
 };
 
-// Row actions menu, e.g. on a site in the data table.
+// Row actions menu, e.g. on a row in the data table.
 export const RowActions: Story = {
   render: (args) => (
     <DropdownMenu {...args}>
@@ -107,7 +107,7 @@ export const RowActions: Story = {
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem>
           <PiPencilSimpleFill />
-          Edit site
+          Edit
         </DropdownMenuItem>
         <DropdownMenuItem>
           <PiExportFill />
@@ -205,7 +205,7 @@ export const WithSubmenu: Story = {
         <PiCaretDown />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48">
-        <DropdownMenuItem>New site</DropdownMenuItem>
+        <DropdownMenuItem>New project</DropdownMenuItem>
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Export as</DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-36">

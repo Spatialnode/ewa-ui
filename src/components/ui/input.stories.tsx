@@ -108,7 +108,7 @@ export const Search: Story = {
 
 export const SearchFilled: Story = {
   name: "Filled: Search",
-  args: { type: "search", placeholder: undefined, defaultValue: "Lekki Phase 1" },
+  args: { type: "search", placeholder: undefined, defaultValue: "Quarterly report" },
 };
 
 export const SearchDisabled: Story = {
@@ -120,7 +120,7 @@ export const SearchCustomIcon: Story = {
   name: "Search: Custom Icon",
   args: {
     type: "search",
-    placeholder: "Filter stores",
+    placeholder: "Filter results",
     leftIcon: <PiFunnelSimpleFill />,
   },
 };

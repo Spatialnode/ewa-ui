@@ -6,8 +6,8 @@ import {
   PiCaretDown,
   PiCheckSquareOffset,
   PiConfettiFill,
-  PiMapPinPlusFill,
-  PiStorefrontFill,
+  PiFolderFill,
+  PiPaperPlaneTiltFill,
 } from "react-icons/pi";
 
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ const CancelButton = ({ children = "Cancel" }: { children?: string }) => (
   <DialogClose render={<Button variant="secondary" />}>{children}</DialogClose>
 );
 
-// Selectable card used by the export and site-picker stories.
+// Selectable card used by the export and option-picker stories.
 const OptionCard = ({
   value,
   selected,
@@ -69,9 +69,9 @@ const OptionCard = ({
 export const Basic: Story = {
   args: {
     triggerText: "Open dialog",
-    title: "Edit site",
+    title: "Edit project",
     children:
-      "Update the site details. Changes are saved to the store registry.",
+      "Update the project details. Changes are saved when you confirm.",
     footer: (
       <>
         <CancelButton />
@@ -118,17 +118,17 @@ export const ExportFormat: Story = {
 
 export const ConfirmWithNote: Story = {
   args: {
-    triggerText: "Approve site",
+    triggerText: "Approve project",
     size: "sm",
-    icon: <PiStorefrontFill />,
-    title: "Approve CS-021?",
-    description: "Admiralty Way, Lekki Phase 1",
+    icon: <PiFolderFill />,
+    title: "Approve Project Alpha?",
+    description: "Submitted by the design team",
     headerDivider: false,
     children: (
       <div className="flex flex-col gap-4">
         <p className="text-base">
-          Are you sure you want to approve CS-021? This site will be locked in
-          and moved forward to the active development stage.
+          Are you sure you want to approve Project Alpha? It will be locked in
+          and moved forward to the next stage.
         </p>
         <div className="flex flex-col gap-2">
           <Label htmlFor="approve-note">Add a note</Label>
@@ -139,7 +139,7 @@ export const ConfirmWithNote: Story = {
     footer: (
       <>
         <CancelButton />
-        <Button>Approve site</Button>
+        <Button>Approve project</Button>
       </>
     ),
   },
@@ -148,15 +148,15 @@ export const ConfirmWithNote: Story = {
 export const SubmitInverseIcon: Story = {
   args: {
     ...ConfirmWithNote.args,
-    triggerText: "Submit site",
-    icon: <PiMapPinPlusFill />,
+    triggerText: "Submit project",
+    icon: <PiPaperPlaneTiltFill />,
     iconTone: "inverse",
-    title: "Submit CS-010 for approval?",
+    title: "Submit Project Beta for approval?",
     children: (
       <div className="flex flex-col gap-4">
         <p className="text-base">
-          Are you sure you want to proceed? This will put the candidate site
-          under review.
+          Are you sure you want to proceed? This will put the project under
+          review.
         </p>
         <div className="flex flex-col gap-2">
           <Label htmlFor="submit-note">Add a note</Label>
@@ -175,16 +175,16 @@ export const SubmitInverseIcon: Story = {
 
 export const Return: Story = {
   args: {
-    triggerText: "Return site",
+    triggerText: "Return project",
     size: "sm",
     icon: <PiArrowBendUpLeftBold />,
-    title: "Return CS-014",
-    description: "Admiralty Way, Lekki Phase 1",
+    title: "Return Project Gamma",
+    description: "Submitted by the design team",
     headerDivider: false,
     children: (
       <p className="text-base">
-        Are you sure you want to return <strong>CS-014?</strong> It goes back to
-        draft so the analyst can make the changes you ask for and submit it
+        Are you sure you want to return <strong>Project Gamma?</strong> It goes
+        back to draft so the owner can make the changes you ask for and submit it
         again.
       </p>
     ),
@@ -199,15 +199,15 @@ export const Return: Story = {
 
 export const Success: Story = {
   args: {
-    triggerText: "Launch store",
-    title: "New store added",
+    triggerText: "Create project",
+    title: "Project created",
     bodyClassName: "flex flex-col items-center gap-3 py-6 text-center",
     children: (
       <>
         <PiConfettiFill className="size-8 text-btn-primary" />
         <p>
-          Congratulations! The new SFL store -014 has been successfully launched
-          on November 3, 2017 at 12 Herbert Macaulay, Yaba, Lagos.
+          Congratulations! Project Delta has been created and is ready for your
+          team.
         </p>
       </>
     ),
@@ -217,15 +217,15 @@ export const Success: Story = {
 
 export const EmptyState: Story = {
   args: {
-    triggerText: "New store",
-    title: "New store",
+    triggerText: "New project",
+    title: "New project",
     bodyClassName: "flex flex-col items-center gap-4 px-10 py-8 text-center",
     children: (
       <>
-        <PiStorefrontFill className="size-8 text-icon-default" />
+        <PiFolderFill className="size-8 text-icon-default" />
         <p className="text-base">
-          There are no active approved sites. All active sites will appear here
-          to be added to the store registry.
+          There are no approved items yet. Approved items will appear here once
+          they are ready.
         </p>
       </>
     ),
@@ -234,25 +234,25 @@ export const EmptyState: Story = {
         <CancelButton>Close</CancelButton>
         <Button variant="tertiary">
           <PiCheckSquareOffset />
-          Evaluate site
+          Start review
         </Button>
       </>
     ),
   },
 };
 
-export const SelectSite: Story = {
+export const SelectOption: Story = {
   render: function Render(args) {
-    const [site, setSite] = React.useState("yaba");
-    const sites = [
-      { id: "yaba", name: "Herbert Macaulay, Yaba" },
-      { id: "agege", name: "Agege, Lagos" },
+    const [option, setOption] = React.useState("a");
+    const options = [
+      { id: "a", name: "Option A" },
+      { id: "b", name: "Option B" },
     ];
     return (
       <AppDialog
         {...args}
-        triggerText="New store"
-        title="New store"
+        triggerText="Choose option"
+        title="Choose an option"
         footer={
           <>
             <CancelButton>Close</CancelButton>
@@ -260,14 +260,17 @@ export const SelectSite: Story = {
           </>
         }
       >
-        <RadioGroup value={site} onValueChange={(v) => setSite(v as string)}>
-          {sites.map((s) => (
-            <OptionCard key={s.id} value={s.id} selected={site === s.id}>
+        <RadioGroup
+          value={option}
+          onValueChange={(v) => setOption(v as string)}
+        >
+          {options.map((o) => (
+            <OptionCard key={o.id} value={o.id} selected={option === o.id}>
               <span className="text-sm font-medium text-display-01">
-                {s.name}
+                {o.name}
               </span>
               <span className="text-xs text-display-subtle-01">
-                ₦51.1m est. rent · 2.6 km away · Approved 2 weeks ago
+                12 items · Updated 2 weeks ago
               </span>
             </OptionCard>
           ))}
@@ -278,23 +281,23 @@ export const SelectSite: Story = {
 };
 
 // Long form: only the body scrolls, header and footer stay visible.
-export const LaunchStoreForm: Story = {
+export const LongForm: Story = {
   args: {
-    triggerText: "Launch store",
+    triggerText: "Create project",
     size: "sm",
-    title: "Launch New Store",
+    title: "New Project",
     children: (
       <div className="flex flex-col gap-4">
         <p>
-          Herbert Macaulay, Yaba is approved. Opening it as a store moves it to
-          the registry, starting revenue and delivery coverage.
+          Fill in the details below. Only the body scrolls, so the header and
+          footer stay visible.
         </p>
         <div className="grid grid-cols-2 gap-2 rounded-12 bg-surface-level-00 p-2">
           {[
-            ["Suitability score", "98%"],
-            ["From nearest store", "56.3km / 45min"],
-            ["Expected sales per day", "₦981k /day"],
-            ["Est. Market Share", "56.6%"],
+            ["Score", "98%"],
+            ["Tasks", "24"],
+            ["Members", "6"],
+            ["Progress", "56.6%"],
           ].map(([label, value]) => (
             <div key={label} className="rounded-8 bg-surface-base p-2">
               <p className="text-xs text-display-subtle-01">{label}</p>
@@ -303,11 +306,11 @@ export const LaunchStoreForm: Story = {
           ))}
         </div>
         {[
-          "Store Name",
-          "Seats capacity",
-          "Opened",
-          "Asking rent / Capital",
-          "Full Address",
+          "Project name",
+          "Owner",
+          "Start date",
+          "Budget",
+          "Description",
         ].map((label) => (
           <div key={label} className="flex flex-col gap-2">
             <Label>{label}</Label>
@@ -319,7 +322,7 @@ export const LaunchStoreForm: Story = {
     footer: (
       <>
         <CancelButton />
-        <Button variant="tertiary">Add to Registry</Button>
+        <Button variant="tertiary">Create project</Button>
       </>
     ),
   },
@@ -335,9 +338,9 @@ export const SettingsNoFooter: Story = {
       <div className="flex flex-col gap-4">
         <div className="divide-y divide-border-01 rounded-12 bg-surface-level-00 px-3">
           {[
-            ["Full name", "Sundry Food"],
-            ["Email", "sundryfood@gmail.com"],
-            ["Role", "Super Admin"],
+            ["Full name", "Jane Doe"],
+            ["Email", "jane.doe@example.com"],
+            ["Role", "Admin"],
           ].map(([label, value]) => (
             <div key={label} className="flex justify-between py-3">
               <span className="text-display-subtle-01">{label}</span>
