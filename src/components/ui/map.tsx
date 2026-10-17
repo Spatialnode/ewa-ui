@@ -1033,7 +1033,9 @@ const positionClasses: Record<MapControlsPosition, string> = {
   "top-left": "top-4 left-4",
   "top-right": "top-4 right-4",
   "bottom-left": "bottom-4 left-4",
-  "bottom-right": "bottom-10 right-4",
+  // Sits on MapLibre's compact attribution (24px tall, 10px from the edges): right edges line up
+  // and the 8px gap matches the one between control groups, whether the attribution is open or not
+  "bottom-right": "bottom-10.5 right-2.5",
 };
 
 function MapControls({
@@ -1363,12 +1365,11 @@ function BasemapControl({
           </MapControlButton>
         </Popover.Trigger>
       </MapControlGroup>
-      {/* No portal: the panel stays inside the map container, so it still
-          shows when the map is fullscreen. */}
       <Popover.Content
         side={side}
         align={align}
         sideOffset={8}
+        onOpenAutoFocus={(e) => e.preventDefault()}
         className={cn(
           "border-border-01 bg-surface-base z-20 space-y-1 rounded-14 border p-2 shadow-popover outline-none",
           classNames?.basemapPanel,
@@ -1394,7 +1395,7 @@ function BasemapControl({
                 <span
                   className={cn(
                     "bg-surface-level-01 block h-14 w-20 overflow-hidden rounded-12 border-2 transition-colors",
-                    "group-focus-visible/basemap:ring-ring/50 group-focus-visible/basemap:ring-3",
+                    "group-focus-visible/basemap:ring-spot-02/40 group-focus-visible/basemap:ring-2",
                     selected
                       ? "border-spot-02"
                       : "border-transparent group-hover/basemap:border-border-00",
@@ -2473,6 +2474,18 @@ type MapClusterLayerProps<
   clusterColors?: [string, string, string];
   /** Point count thresholds for color/size steps: [medium, large] (default: [100, 750]) */
   clusterThresholds?: [number, number];
+  /** Radii of cluster circles in px: [small, medium, large] (default: [20, 30, 40]) */
+  clusterSizes?: [number, number, number];
+  /** Cluster circle outline width in px (default: 0.75) */
+  clusterStrokeWidth?: number;
+  /** Cluster circle outline color (default: "#fff") */
+  clusterStrokeColor?: string;
+  /** Cluster circle opacity, 0–1 (default: 0.85) */
+  clusterOpacity?: number;
+  /** Cluster point-count label color (default: "#fff") */
+  clusterTextColor?: string;
+  /** Cluster point-count label size in px (default: 12) */
+  clusterTextSize?: number;
   /** Color for unclustered individual points (default: "#3b82f6") */
   pointColor?: string;
   /** Callback when an unclustered point is clicked */
@@ -2498,6 +2511,7 @@ const DEFAULT_CLUSTER_COLORS: [string, string, string] = [
   "#1e3a8a",
 ];
 const DEFAULT_CLUSTER_THRESHOLDS: [number, number] = [100, 750];
+const DEFAULT_CLUSTER_SIZES: [number, number, number] = [20, 30, 40];
 
 type MapCirclePaint = NonNullable<MapLibreGL.CircleLayerSpecification["paint"]>;
 
@@ -2509,6 +2523,12 @@ function MapClusterLayer<
   clusterRadius = 50,
   clusterColors = DEFAULT_CLUSTER_COLORS,
   clusterThresholds = DEFAULT_CLUSTER_THRESHOLDS,
+  clusterSizes = DEFAULT_CLUSTER_SIZES,
+  clusterStrokeWidth = 0.75,
+  clusterStrokeColor = "#fff",
+  clusterOpacity = 0.85,
+  clusterTextColor = "#fff",
+  clusterTextSize = 12,
   pointColor = "#3b82f6",
   onPointClick,
   onClusterClick,
@@ -2547,17 +2567,24 @@ function MapClusterLayer<
       "circle-radius": [
         "step",
         ["get", "point_count"],
-        20,
+        clusterSizes[0],
         clusterThresholds[0],
-        30,
+        clusterSizes[1],
         clusterThresholds[1],
-        40,
+        clusterSizes[2],
       ],
-      "circle-stroke-width": 0.75,
-      "circle-stroke-color": "#fff",
-      "circle-opacity": 0.85,
+      "circle-stroke-width": clusterStrokeWidth,
+      "circle-stroke-color": clusterStrokeColor,
+      "circle-opacity": clusterOpacity,
     }),
-    [clusterColors, clusterThresholds],
+    [
+      clusterColors,
+      clusterThresholds,
+      clusterSizes,
+      clusterStrokeWidth,
+      clusterStrokeColor,
+      clusterOpacity,
+    ],
   );
 
   const unclusteredPaint = useMemo<MapCirclePaint>(
@@ -2691,9 +2718,9 @@ function MapClusterLayer<
         layout={{
           "text-field": "{point_count_abbreviated}",
           "text-font": ["Open Sans Semibold"],
-          "text-size": 12,
+          "text-size": clusterTextSize,
         }}
-        paint={{ "text-color": "#fff" }}
+        paint={{ "text-color": clusterTextColor }}
         beforeId={beforeId}
       />
       <Layer

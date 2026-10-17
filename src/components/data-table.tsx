@@ -3,6 +3,7 @@ import {
   createColumnHelper,
   createSortedRowModel,
   flexRender,
+  functionalUpdate,
   rowSortingFeature,
   sortFn_alphanumeric,
   sortFn_basic,
@@ -13,6 +14,7 @@ import {
   type ColumnDef,
   type Row,
   type RowData,
+  type SortingState,
 } from "@tanstack/react-table";
 import { PiArrowDownBold, PiArrowUpBold } from "react-icons/pi";
 import {
@@ -65,7 +67,15 @@ type DataTableProps<TData extends RowData> = {
   data: TData[];
   getRowId?: (row: TData, index: number) => string;
   onRowClick?: (row: DataTableRow<TData>) => void;
+  /** Sorting is on for every column by default; set a column's `enableSorting: false` to opt it out. */
   enableSorting?: boolean;
+  /**
+   * Controlled sorting state. Pass it with `onSortingChange` to sort on the
+   * server: the table then shows `data` as given and only reports header
+   * clicks, one column at a time.
+   */
+  sorting?: SortingState;
+  onSortingChange?: (sorting: SortingState) => void;
   stickyHeader?: boolean;
   isLoading?: boolean;
   loadingRowCount?: number;
@@ -102,7 +112,9 @@ function DataTable<TData extends RowData>({
   data,
   getRowId,
   onRowClick,
-  enableSorting = false,
+  enableSorting = true,
+  sorting,
+  onSortingChange,
   stickyHeader = true,
   isLoading = false,
   loadingRowCount = 10,
@@ -130,6 +142,13 @@ function DataTable<TData extends RowData>({
     data,
     getRowId,
     enableSorting,
+    ...(onSortingChange && {
+      state: { sorting: sorting ?? [] },
+      onSortingChange: (updater) =>
+        onSortingChange(functionalUpdate(updater, sorting ?? [])),
+      manualSorting: true,
+      enableMultiSort: false,
+    }),
   });
 
   const rows = table.getRowModel().rows;
@@ -313,6 +332,7 @@ function DataTable<TData extends RowData>({
 
 export { DataTable, createDataTableColumnHelper };
 export type {
+  SortingState as DataTableSortingState,
   DataTableProps,
   DataTableColumnDef,
   DataTableColumnMeta,

@@ -1,6 +1,6 @@
 // src/components/ui/dialog.stories.tsx
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PiMagnifyingGlassFill, PiStorefrontFill, PiX } from "react-icons/pi";
+import { PiCheckSquareOffset, PiStorefrontFill } from "react-icons/pi";
 import { Button } from "./button";
 import {
   Dialog,
@@ -37,14 +37,14 @@ export const Default: Story = {
       <DialogTrigger render={<Button variant="outline" />}>
         Open dialog
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent  showCloseButton>
         <DialogHeader className="border-none">
           <DialogTitle>Edit site</DialogTitle>
           <DialogDescription>
             Update the site details. Changes are saved to the store registry.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter showCloseButton>
+        <DialogFooter>
           <Button>Save changes</Button>
         </DialogFooter>
       </DialogContent>
@@ -59,16 +59,9 @@ export const EmptyState: Story = {
       <DialogTrigger render={<Button variant="outline" />}>
         New store
       </DialogTrigger>
-      <DialogContent showCloseButton={false} className="gap-0 p-0 sm:max-w-152">
-        <DialogHeader className="flex-row items-center justify-between border-b px-6 py-5">
+      <DialogContent className="sm:max-w-129.5">
+        <DialogHeader>
           <DialogTitle className="text-xl font-semibold">New store</DialogTitle>
-          <DialogClose
-            render={
-              <Button variant="ghost" size="icon-sm" aria-label="Close" />
-            }
-          >
-            <PiX className="size-4" />
-          </DialogClose>
         </DialogHeader>
         <div className="flex flex-col items-center gap-4 px-6 py-10 text-center">
           <PiStorefrontFill className="size-8" />
@@ -77,12 +70,10 @@ export const EmptyState: Story = {
             here to be added to the store registry.
           </DialogDescription>
         </div>
-        <DialogFooter className="mx-0 mb-0 gap-6 px-6 py-5">
-          <DialogClose render={<Button variant="secondary" />}>
-            Close
-          </DialogClose>
-          <Button>
-            <PiMagnifyingGlassFill />
+        <DialogFooter>
+          <Button variant="text">Close</Button>
+          <Button variant="secondary">
+            <PiCheckSquareOffset />
             Evaluate site
           </Button>
         </DialogFooter>
@@ -120,11 +111,11 @@ export const LongContent: Story = {
   render: (args) => (
     <Dialog {...args}>
       <DialogTrigger render={<Button variant="outline" />}>Terms</DialogTrigger>
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[80vh] flex-col">
         <DialogHeader>
           <DialogTitle>Site evaluation terms</DialogTitle>
         </DialogHeader>
-        <div className="flex flex-col gap-3 text-muted-foreground">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3 text-muted-foreground">
           {Array.from({ length: 12 }, (_, i) => (
             <p key={i}>
               Evaluations use footfall, demographic and competitor data for the
