@@ -23,7 +23,7 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
 
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-highlight-red-25 text-btn-danger hover:bg-highlight-red-25/80 focus-visible:border-highlight-red-75 focus-visible:ring-highlight-red-50/50 disabled:bg-surface-level-00 disabled:text-btn-secondary-text-disable",
         link: "text-primary underline-offset-4 hover:underline",
         "map-icon":
           "rounded-8 border-border-00 bg-surface-base text-icon-nav hover:bg-surface-level-00 aria-pressed:bg-surface-level-01 dark:hover:bg-surface-level-01",
