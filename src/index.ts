@@ -18,3 +18,4 @@ export * from "./components/app-dialog";
 export * from "./components/ui/chart";
 export * from "./components/ui/toast";
 export * from "./components/ui/dropdown-menu";
+export * from "./components/ui/tabs";
